@@ -43,6 +43,11 @@ temporal:
 buildkernel:
 	@echo Unpacking the kernel
 	@cd tmp/package; tar xvfz ../../linux-2.6.29.tar.gz
+	@echo Adding the patch
+	@cp appends/kpatch/crosscompilerpatch tmp/package/linux-2.6.29/patches/
+	@echo crosscompilerpatch >> tmp/package/linux-2.6.29/patches/series
+	@echo Applying patches
+	@cd tmp/package/linux-2.6.29; quilt pop -a -f; quilt push -a
 	@echo Building the kernel
 	@cd tmp/package/linux-2.6.29; make
 	@echo Creating uImage
@@ -140,11 +145,11 @@ devices:
 
 tarfile:
 	@echo Tar the directories created and remove the garbage
-	@rm tmp/package -R
+	@sudo rm tmp/package -R
 	@echo Tar the directories
 	@tar cfz distribution.tar tmp
 	@echo Removing the garbage
-	@rm tmp -R
+	@sudo rm tmp -R
 
 help:
 	@echo make clean => Remove all creted files
