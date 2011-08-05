@@ -34,7 +34,7 @@ export PATH
 
 all: build
 
-build: temporal buildkernel skeleton crossbusybox tarfile
+build: temporal buildkernel skeleton crossbusybox devices tarfile
 
 temporal:
 	@echo Creating temps rootfs and package 
@@ -63,8 +63,8 @@ skeleton:
 	@echo Copying the basic C dynamic libraries from toolchain
 	@cd tmp/rootfs/lib; cp -a $(TOOLCHAINPATH)/arm-none-linux-gnueabi/libc/armv4t/lib/* ./
 
-	echo Creating rcS
-	touch rcS
+	@echo Creating rcS
+	@touch rcS
 	@echo '#!'/bin/sh > rcS
 	@echo PATH = /sbin:/bin:/usr/sbin:/usr/bin >> rcS
 	@echo umask 022 >> rcS
@@ -124,20 +124,19 @@ crossbusybox:
 	@echo Unpack busybox-1.18.5
 	@cd tmp/package; tar -xjvf busybox-1.18.5.tar.bz2
 	@cd tmp/package/busybox-1.18.5; make defconfig
-	@cd tmp/package/busybox-1.18.5; make ARCH=arm CROSS_COMPILE=arm-none-linux-gnueabi-
-	@cd tmp/package/busybox-1.18.5; make install CONFIG_PREFIX=../../rootfs	
+	@cd tmp/package/busybox-1.18.5; make install ARCH=arm CROSS_COMPILE=arm-none-linux-gnueabi- CONFIG_PREFIX=../../rootfs
 
 devices:
-	@echo Creating basic devices: Bug permission
-	@cd tmp/rootfs/dev; mknod -m 600 mem c 1 1
-	@cd tmp/rootfs/dev; mknod -m 666 null c 1 3
-	@cd tmp/rootfs/dev; mknod -m 666 zero c 1 5
-	@cd tmp/rootfs/dev; mknod -m 644 random c 1 8
-	@cd tmp/rootfs/dev; mknod -m 600 tty0 c 4 0
-	@cd tmp/rootfs/dev; mknod -m 600 tty1 c 4 1
-	@cd tmp/rootfs/dev; mknod -m 600 ttyS0 c 4 64
-	@cd tmp/rootfs/dev; mknod -m 666 tty c 5 0
-	@cd tmp/rootfs/dev; mknod -m 600 console c 5 1
+	@echo Creating basic devices: This section need SuperUsuer permission
+	@cd tmp/rootfs/dev; sudo mknod -m 600 mem c 1 1
+	@cd tmp/rootfs/dev; sudo mknod -m 666 null c 1 3
+	@cd tmp/rootfs/dev; sudo mknod -m 666 zero c 1 5
+	@cd tmp/rootfs/dev; sudo mknod -m 644 random c 1 8
+	@cd tmp/rootfs/dev; sudo mknod -m 600 tty0 c 4 0
+	@cd tmp/rootfs/dev; sudo mknod -m 600 tty1 c 4 1
+	@cd tmp/rootfs/dev; sudo mknod -m 600 ttyS0 c 4 64
+	@cd tmp/rootfs/dev; sudo mknod -m 666 tty c 5 0
+	@cd tmp/rootfs/dev; sudo mknod -m 600 console c 5 1
 
 tarfile:
 	@echo Tar the directories created and remove the garbage
