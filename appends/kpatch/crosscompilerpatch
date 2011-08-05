@@ -1,0 +1,13 @@
+Index: linux-2.6.29/Makefile
+===================================================================
+--- linux-2.6.29.orig/Makefile	2011-07-19 17:05:57.087897675 -0600
++++ linux-2.6.29/Makefile	2011-07-19 17:08:09.104291010 -0600
+@@ -196,7 +196,7 @@
+ # Note: Some architectures assign CROSS_COMPILE in their arch/*/Makefile
+ export KBUILD_BUILDHOST := $(SUBARCH)
+ ARCH		?= $(SUBARCH)
+-CROSS_COMPILE	?= arm-linux-
++CROSS_COMPILE	?= arm-none-linux-gnueabi-
+ 
+ # Architecture as present in compile.h
+ UTS_MACHINE 	:= $(ARCH)
