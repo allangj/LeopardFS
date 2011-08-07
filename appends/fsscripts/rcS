@@ -1,0 +1,114 @@
+#!/bin/sh
+#   ---------------------------------------------
+#   Common settings
+#   ---------------------------------------------
+HOSTNAME=Leopard
+VERSION=1
+
+hostname $HOSTNAME
+
+#   ---------------------------------------------
+#   Prints execution status.
+#
+#   arg1 : Execution status
+#   arg2 : Continue (0) or Abort (1) on error
+#   ---------------------------------------------
+status ()
+{
+       if [ $1 -eq 0 ] ; then
+               echo "[SUCCESS]"
+       else
+               echo "[FAILED]"
+
+               if [ $2 -eq 1 ] ; then
+                       echo "... System init aborted."
+                       exit 1
+               fi
+       fi
+
+}
+
+#   ---------------------------------------------
+#   Get verbose
+#   ---------------------------------------------
+echo ""
+echo "    System initialization..."
+echo ""
+echo "    Hostname       : $HOSTNAME"
+echo "    Filesystem     : v$VERSION"
+echo ""
+echo ""
+echo "    Kernel release : `uname -s` `uname -r`"
+echo "    Kernel version : `uname -v`"
+echo ""
+
+
+#   ---------------------------------------------
+#   MDEV Support
+#   (Requires sysfs support in the kernel)
+#   ---------------------------------------------
+echo -n " Mounting /proc             : "
+mount -n -t proc /proc /proc
+status $? 1
+
+echo -n " Mounting /sys              : "
+mount -n -t sysfs sysfs /sys
+status $? 1
+
+echo -n " Mounting /dev              : "
+mount -n -t tmpfs mdev /dev
+status $? 1
+
+echo -n " Mounting /dev/pts          : "
+mkdir /dev/pts
+mount -t devpts devpts /dev/pts
+status $? 1
+
+echo -n " Enabling hot-plug          : "
+echo "/sbin/mdev" > /proc/sys/kernel/hotplug
+status $? 0
+
+echo -n " Populating /dev            : "
+mkdir /dev/input
+mkdir /dev/snd
+
+mdev -s
+status $? 0
+
+#   ---------------------------------------------
+#   Mount the default file systems
+#   ---------------------------------------------
+echo -n " Mounting other filesystems : "
+mount -a
+status $? 0
+
+
+#   ---------------------------------------------
+#   Set PATH
+#   ---------------------------------------------
+export PATH=/bin:/sbin:/usr/bin:/usr/sbin:/usr/local/bin
+
+
+#   ---------------------------------------------
+#   Start other daemons
+#   ---------------------------------------------
+echo -n " Starting syslogd           : "
+/sbin/syslogd
+status $? 0
+
+#   ---------------------------------------------
+#   Done!
+#   ---------------------------------------------
+echo ""
+echo "System initialization complete."
+
+
+#   ---------------------------------------------
+#   Start demo app
+#   ---------------------------------------------
+#if [[ -x /etc/init.d/demo_start ]]; then
+#       echo " Starting Demo Application..."
+#       /etc/init.d/demo_start &
+#       sleep 5
+#fi
+

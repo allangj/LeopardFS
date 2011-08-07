@@ -2,6 +2,7 @@
 #
 # Copyright (C) 2010 by Allan Granados  <allangj1_618@hotmail.com>
 #                       Sebastian Lopez <>
+#			Miguel Fonseca  <>
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -64,63 +65,31 @@ skeleton:
 	@cd tmp/rootfs; mkdir usr/bin usr/lib usr/sbin
 	@cd tmp/rootfs; mkdir var/lib var/lock var/log var/run var/tmp
 	@chmod 1777 tmp/rootfs/var/tmp
+	@cd tmp/rootfs; mkdir etc/init.d dev/pts
 	
 	@echo Copying the basic C dynamic libraries from toolchain
 	@cd tmp/rootfs/lib; cp -a $(TOOLCHAINPATH)/arm-none-linux-gnueabi/libc/armv4t/lib/* ./
 
-	@echo Creating rcS
-	@touch rcS
-	@echo '#!'/bin/sh > rcS
-	@echo PATH = /sbin:/bin:/usr/sbin:/usr/bin >> rcS
-	@echo umask 022 >> rcS
-	@echo export PATH >> rcS
-	@echo mount -a >> rcS
-	@echo mkdir /dev/pts >> rcS
-	@echo mount -t devpts devpts /dev/pts -o mode=0622  >> rcS 
-	@echo 'echo /sbin/mdev > /proc/sys/kernel/hotplug' >> rcS
-	@echo mdev -s >> rcS
-	@echo mkdir /var/lock >> rcS
-	@echo klogd >> rcS
-	@echo syslogd >> rcS
-	@echo hwclock -s >> rcS
-	@echo Moving rcS to the FS
-	@mv rcS tmp/rootfs/etc
+	@echo Copying rcS to the FS
+	@cp appends/fsscripts/rcS tmp/rootfs/etc/init.d/
 
-	@echo Creating inittab
-	@touch inittab
-	@echo ::sysinit:/etc/rcS > inittab
-	@echo ::restart:/sbin/init >> inittab
-	@echo ttyS0::askfirst:-/bin/sh >> inittab
-	@echo ::shutdown:/bin/umount –a -r >> inittab
-	@echo ::respawn:/sbin/getty 115200 ttyS0 >> inittab
-	@echo Moving inittab to the FS
-	@mv inittab tmp/rootfs/etc
-	
-	@echo Creating fstab
-	@touch fstab
-	@echo proc            /proc           proc    defaults        0 0 > fstab
-	@echo none            /dev/pts        devpts  gid=5,mode=620  0 0 >> fstab
-	@echo none            /sys            sysfs   defaults        0 0 >> fstab
-	@echo none            /dev            tmpfs   defaults        0 0 >> fstab
-	@echo none            /tmp            tmpfs   defaults        0 0 >> fstab
-	@echo none            /var            tmpfs   defaults        0 0 >> fstab
-	@echo Moving fstab to the FS
-	@mv fstab tmp/rootfs/etc
+	@echo Copying group to the FS
+	@cp appends/fsscripts/group tmp/rootfs/etc/
 
-	@echo Creating mdev.conf
-	@touch mdev.conf
-	@echo rtc0 root:root 660 @ln -sf /dev/$MDEV /dev/rtc > mdev.conf
-	@echo controlC0 root:root 660 @ln -sf /dev/$MDEV /dev/snd/$MDEV >> mdev.conf
-	@echo pcmC0D0c root:root 660 @ln -sf /dev/$MDEV /dev/snd/$MDEV >> mdev.conf
-	@echo pcmC0D0p root:root 660 @ln -sf /dev/$MDEV /dev/snd/$MDEV >> mdev.conf
-	@echo timer root:root 660 @ln -sf /dev/$MDEV /dev/snd/$MDEV >> mdev.conf
-	@echo event0 root:root 660 @ ln -sf /dev/$MDEV /dev/input/$MDEV >> mdev.conf
-	@echo fb0 root:root 660 @ln -sf /dev/$MDEV /dev/fb/0 >> mdev.conf
-	@echo fb1 root:root 660 @ln -sf /dev/$MDEV /dev/fb/1 >> mdev.conf
-	@echo fb2 root:root 660 @ln -sf /dev/$MDEV /dev/fb/2 >> mdev.conf
-	@echo i2c-0 root:root 660 @ln -sf /dev/$MDEV /dev/i2c/0 >> mdev.conf
-	@echo Moving mdev.conf to the FS
-	@mv mdev.conf tmp/rootfs/etc
+	@echo Copying passwd to the FS
+	@cp appends/fsscripts/passwd tmp/rootfs/etc/
+
+	@echo Copying hosts to the FS
+	@cp appends/fsscripts/hosts tmp/rootfs/etc/
+
+	@echo Copying inittab to the FS
+	@cp appends/fsscripts/inittab tmp/rootfs/etc	
+
+	@echo Copying fstab to the FS
+	@cp appends/fsscripts/fstab tmp/rootfs/etc
+
+	@echo Copying mdev.conf
+	@cp appends/fsscripts/mdev.conf tmp/rootfs/etc
 
 crossbusybox:
 	@echo Cross-compile busybox

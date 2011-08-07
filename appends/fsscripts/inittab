@@ -1,0 +1,15 @@
+::sysinit:/etc/init.d/rcS 
+
+# /bin/ash
+#
+# Start an "askfirst" shell on the serial port
+ttyS0::askfirst:-/bin/ash
+
+# Stuff to do when restarting the init process
+::restart:/sbin/init
+
+# Stuff to do before rebooting
+::ctrlaltdel:/sbin/reboot
+::shutdown:/bin/umount -a -r
+::shutdown:/sbin/swapoff -a
+
