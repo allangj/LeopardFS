@@ -100,6 +100,18 @@ crossbusybox:
 	@cd tmp/package/busybox-1.18.5; make defconfig
 	@cd tmp/package/busybox-1.18.5; make install ARCH=arm CROSS_COMPILE=arm-none-linux-gnueabi- CONFIG_PREFIX=../../rootfs
 
+crosslighttpd:
+#http://nb-no.facebook.com/note.php?note_id=10150093867939362
+	@mkdir tmp/rootfs/srv/
+	@echo Cross-compile lighttpd
+	@echo Downloading lighttpd-1.4.28
+	@cd tmp/package; wget http://download.lighttpd.net/lighttpd/releases-1.4.x/lighttpd-1.4.28.tar.gz
+	@echo Unpack lighttpd-1.4.28
+	@cd tmp/package; tar xvfz lighttpd-1.4.28.tar.gz
+#./configure --program-prefix= --bindir=/usr/bin --localstatedir=/var --includedir=/usr/include --infodir=/usr/share/info --exec-prefix=/usr --sysconfdir=/etc --prefix=/usr --datadir=/usr/share --libexecdir=/usr/libexec --sharedstatedir=/usr/com --libdir=/usr/lib --localstatedir=/var --with-openssl --mandir=/usr/share/man --sbindir=/usr/sbin
+	@cd tmp/package/lighttpd-1.4.28 ;./configure --host=arm-none-linux-gnueabi --disable-static --enable-shared --without-zlib --without-bzip2 --without-pcre --prefix=../../rootfs/srv/
+	@cd tmp/package/lighttpd-1.4.28; make; make install
+
 devices:
 	@echo Creating basic devices: This section need SuperUsuer permission
 	@cd tmp/rootfs/dev; sudo mknod -m 600 mem c 1 1
