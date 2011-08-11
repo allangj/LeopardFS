@@ -22,7 +22,7 @@
 # You shouldn't need to mess with anything beyond this point...
 #--------------------------------------------------------------
 
-.PHONY: all build buildkernel skeleton crossbusybox devices tarfile help clean
+.PHONY: all build buildkernel skeleton crossbusybox crosslighttpd devices tarfile help clean
 
 # This top-level Makefile can *not* be executed in parallel
 .NOTPARALLEL:
@@ -35,13 +35,13 @@ export PATH
 
 all: build
 
-build: temporal buildkernel skeleton crossbusybox devices tarfile
+build: temporal buildkernel skeleton crossbusybox crosslighttpd devices tarfile
 
 temporal:
 	@echo Creating temps rootfs and package 
 	@mkdir -p tmp/rootfs tmp/package
 
-buildkernel:
+buildkernel: temporal
 	@echo Unpacking the kernel
 	@cd tmp/package; tar xvfz ../../linux-2.6.29.tar.gz
 	@echo Adding the patch
@@ -57,7 +57,7 @@ buildkernel:
 	@mkdir tmp/kernelimage
 	@mv tmp/package/linux-2.6.29/arch/arm/boot/uImage tmp/kernelimage/
 
-skeleton:
+skeleton: temporal
 	@echo Creating the basics for the FS
 	@echo Creating directories and permissions
 	@cd tmp/rootfs; mkdir bin dev etc lib proc sbin tmp usr var sys
@@ -91,7 +91,7 @@ skeleton:
 	@echo Copying mdev.conf
 	@cp appends/fsscripts/mdev.conf tmp/rootfs/etc
 
-crossbusybox:
+crossbusybox: temporal skeleton
 	@echo Cross-compile busybox
 	@echo Downloading busybox-1.18.5
 	@cd tmp/package; wget http://www.busybox.net/downloads/busybox-1.18.5.tar.bz2
@@ -100,19 +100,20 @@ crossbusybox:
 	@cd tmp/package/busybox-1.18.5; make defconfig
 	@cd tmp/package/busybox-1.18.5; make install ARCH=arm CROSS_COMPILE=arm-none-linux-gnueabi- CONFIG_PREFIX=../../rootfs
 
-crosslighttpd:
-#http://nb-no.facebook.com/note.php?note_id=10150093867939362
-	@mkdir tmp/rootfs/srv/
+crosslighttpd: temporal skeleton
+	@mkdir -p /tmp/lightthpd
 	@echo Cross-compile lighttpd
 	@echo Downloading lighttpd-1.4.28
 	@cd tmp/package; wget http://download.lighttpd.net/lighttpd/releases-1.4.x/lighttpd-1.4.28.tar.gz
 	@echo Unpack lighttpd-1.4.28
 	@cd tmp/package; tar xvfz lighttpd-1.4.28.tar.gz
 #./configure --program-prefix= --bindir=/usr/bin --localstatedir=/var --includedir=/usr/include --infodir=/usr/share/info --exec-prefix=/usr --sysconfdir=/etc --prefix=/usr --datadir=/usr/share --libexecdir=/usr/libexec --sharedstatedir=/usr/com --libdir=/usr/lib --localstatedir=/var --with-openssl --mandir=/usr/share/man --sbindir=/usr/sbin
-	@cd tmp/package/lighttpd-1.4.28 ;./configure --host=arm-none-linux-gnueabi --disable-static --enable-shared --without-zlib --without-bzip2 --without-pcre --prefix=../../rootfs/srv/
+	@cd tmp/package/lighttpd-1.4.28 ;./configure --host=arm-none-linux-gnueabi --disable-static --enable-shared --without-zlib --without-bzip2 --without-pcre --prefix=/tmp/lightthpd
 	@cd tmp/package/lighttpd-1.4.28; make; make install
+	@cd tmp/rootfs/; cp -a /tmp/lightthpd/sbin/* sbin/; cp -a /tmp/lightthpd/lib/* lib/
+	@rm /tmp/lightthpd -R
 
-devices:
+devices: temporal skeleton
 	@echo Creating basic devices: This section need SuperUsuer permission
 	@cd tmp/rootfs/dev; sudo mknod -m 600 mem c 1 1
 	@cd tmp/rootfs/dev; sudo mknod -m 666 null c 1 3
@@ -124,7 +125,7 @@ devices:
 	@cd tmp/rootfs/dev; sudo mknod -m 666 tty c 5 0
 	@cd tmp/rootfs/dev; sudo mknod -m 600 console c 5 1
 
-tarfile:
+tarfile: temporal skeleton buildkernel
 	@echo Tar the directories created and remove the garbage
 	@sudo rm tmp/package -R
 	@echo Tar the directories
