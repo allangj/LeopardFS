@@ -27,6 +27,15 @@
 # This top-level Makefile can *not* be executed in parallel
 .NOTPARALLEL:
 
+
+MYTMP			= tmp
+ROOTFS			= $(MYTMP)/rootfs
+PACKAGE			= $(MYTMP)/package
+KERNELIMAGE		= $(MYTMP)/kernelimage
+APPENDS			= appends
+KPATCH			= $(APPENDS)/kpatch
+FSSCRIPTS		= $(APPENDS)/fsscripts
+DISNAME			= distribution
 TOOLCHAINPATH		= /opt/arm-2009q1
 PATH   			:= $(TOOLCHAINPATH)/bin:$(PATH)
 
@@ -35,109 +44,109 @@ export PATH
 
 all: build
 
-build: temporal buildkernel skeleton crossbusybox crosslighttpd devices tarfile
+build: buildkernel crossbusybox crosslighttpd devices tarfile
 
 temporal:
 	@echo Creating temps rootfs and package 
-	@mkdir -p tmp/rootfs tmp/package
+	@mkdir -p $(ROOTFS) $(PACKAGE)
 
 buildkernel: temporal
 	@echo Unpacking the kernel
-	@cd tmp/package; tar xvfz ../../linux-2.6.29.tar.gz
+	@cd $(PACKAGE); tar xvfz ../../linux-2.6.29.tar.gz
 	@echo Adding the patch
-	@cp appends/kpatch/crosscompilerpatch tmp/package/linux-2.6.29/patches/
-	@echo crosscompilerpatch >> tmp/package/linux-2.6.29/patches/series
+	@cp $(KPATCH)/crosscompilerpatch $(PACKAGE)/linux-2.6.29/patches/
+	@echo crosscompilerpatch >> $(PACKAGE)/linux-2.6.29/patches/series
 	@echo Applying patches
-	@cd tmp/package/linux-2.6.29; quilt pop -a -f; quilt push -a
+	@cd $(PACKAGE)/linux-2.6.29; quilt pop -a -f; quilt push -a
 	@echo Building the kernel
-	@cd tmp/package/linux-2.6.29; make
+	@cd $(PACKAGE)/linux-2.6.29; make
 	@echo Creating uImage
-	@cd tmp/package/linux-2.6.29; make uImage
+	@cd $(PACKAGE)/linux-2.6.29; make uImage
 	@echo Moving the uImage to tmp/kernelimage
-	@mkdir tmp/kernelimage
-	@mv tmp/package/linux-2.6.29/arch/arm/boot/uImage tmp/kernelimage/
+	@mkdir $(KERNELIMAGE)
+	@mv $(PACKAGE)/linux-2.6.29/arch/arm/boot/uImage $(KERNELIMAGE)/
 
 skeleton: temporal
 	@echo Creating the basics for the FS
 	@echo Creating directories and permissions
-	@cd tmp/rootfs; mkdir bin dev etc lib proc sbin tmp usr var sys
-	@chmod 1777 tmp/rootfs/tmp
-	@cd tmp/rootfs; mkdir usr/bin usr/lib usr/sbin
-	@cd tmp/rootfs; mkdir var/lib var/lock var/log var/run var/tmp
-	@chmod 1777 tmp/rootfs/var/tmp
-	@cd tmp/rootfs; mkdir etc/init.d dev/pts
+	@cd $(ROOTFS); mkdir bin dev etc lib proc sbin tmp usr var sys
+	@chmod 1777 $(ROOTFS)/tmp
+	@cd $(ROOTFS); mkdir usr/bin usr/lib usr/sbin
+	@cd $(ROOTFS); mkdir var/lib var/lock var/log var/run var/tmp
+	@chmod 1777 $(ROOTFS)/var/tmp
+	@cd $(ROOTFS); mkdir etc/init.d dev/pts
 	
 	@echo Copying the basic C dynamic libraries from toolchain
-	@cd tmp/rootfs/lib; cp -a $(TOOLCHAINPATH)/arm-none-linux-gnueabi/libc/armv4t/lib/* ./
+	@cd $(ROOTFS)/lib; cp -a $(TOOLCHAINPATH)/arm-none-linux-gnueabi/libc/armv4t/lib/* ./
 
 	@echo Copying rcS to the FS
-	@cp appends/fsscripts/rcS tmp/rootfs/etc/init.d/
+	@cp $(FSSCRIPTS)/rcS $(ROOTFS)/etc/init.d/
 
 	@echo Copying group to the FS
-	@cp appends/fsscripts/group tmp/rootfs/etc/
+	@cp $(FSSCRIPTS)/group $(ROOTFS)/etc/
 
 	@echo Copying passwd to the FS
-	@cp appends/fsscripts/passwd tmp/rootfs/etc/
+	@cp $(FSSCRIPTS)/passwd $(ROOTFS)/etc/
 
 	@echo Copying hosts to the FS
-	@cp appends/fsscripts/hosts tmp/rootfs/etc/
+	@cp $(FSSCRIPTS)/hosts $(ROOTFS)/etc/
 
 	@echo Copying inittab to the FS
-	@cp appends/fsscripts/inittab tmp/rootfs/etc	
+	@cp $(FSSCRIPTS)/inittab $(ROOTFS)/etc	
 
 	@echo Copying fstab to the FS
-	@cp appends/fsscripts/fstab tmp/rootfs/etc
+	@cp $(FSSCRIPTS)/fstab $(ROOTFS)/etc
 
 	@echo Copying mdev.conf
-	@cp appends/fsscripts/mdev.conf tmp/rootfs/etc
+	@cp $(FSSCRIPTS)/mdev.conf $(ROOTFS)/etc
 
 crossbusybox: temporal skeleton
 	@echo Cross-compile busybox
 	@echo Downloading busybox-1.18.5
-	@cd tmp/package; wget http://www.busybox.net/downloads/busybox-1.18.5.tar.bz2
+	@cd $(PACKAGE); wget http://www.busybox.net/downloads/busybox-1.18.5.tar.bz2
 	@echo Unpack busybox-1.18.5
-	@cd tmp/package; tar -xjvf busybox-1.18.5.tar.bz2
-	@cd tmp/package/busybox-1.18.5; make defconfig
-	@cd tmp/package/busybox-1.18.5; make install ARCH=arm CROSS_COMPILE=arm-none-linux-gnueabi- CONFIG_PREFIX=../../rootfs
+	@cd $(PACKAGE); tar -xjvf busybox-1.18.5.tar.bz2
+	@cd $(PACKAGE)/busybox-1.18.5; make defconfig
+	@cd $(PACKAGE)/busybox-1.18.5; make install ARCH=arm CROSS_COMPILE=arm-none-linux-gnueabi- CONFIG_PREFIX=../../rootfs
 
 crosslighttpd: temporal skeleton
 	@mkdir -p /tmp/lightthpd
 	@echo Cross-compile lighttpd
 	@echo Downloading lighttpd-1.4.28
-	@cd tmp/package; wget http://download.lighttpd.net/lighttpd/releases-1.4.x/lighttpd-1.4.28.tar.gz
+	@cd $(PACKAGE); wget http://download.lighttpd.net/lighttpd/releases-1.4.x/lighttpd-1.4.28.tar.gz
 	@echo Unpack lighttpd-1.4.28
-	@cd tmp/package; tar xvfz lighttpd-1.4.28.tar.gz
+	@cd $(PACKAGE); tar xvfz lighttpd-1.4.28.tar.gz
 #./configure --program-prefix= --bindir=/usr/bin --localstatedir=/var --includedir=/usr/include --infodir=/usr/share/info --exec-prefix=/usr --sysconfdir=/etc --prefix=/usr --datadir=/usr/share --libexecdir=/usr/libexec --sharedstatedir=/usr/com --libdir=/usr/lib --localstatedir=/var --with-openssl --mandir=/usr/share/man --sbindir=/usr/sbin
-	@cd tmp/package/lighttpd-1.4.28 ;./configure --host=arm-none-linux-gnueabi --disable-static --enable-shared --without-zlib --without-bzip2 --without-pcre --prefix=/tmp/lightthpd
-	@cd tmp/package/lighttpd-1.4.28; make; make install
-	@cd tmp/rootfs/; cp -a /tmp/lightthpd/sbin/* sbin/; cp -a /tmp/lightthpd/lib/* lib/
+	@cd $(PACKAGE)/lighttpd-1.4.28 ;./configure --host=arm-none-linux-gnueabi --disable-static --enable-shared --without-zlib --without-bzip2 --without-pcre --prefix=/tmp/lightthpd
+	@cd $(PACKAGE)/lighttpd-1.4.28; make; make install
+	@cd $(ROOTFS); cp -a /tmp/lightthpd/sbin/* sbin/; cp -a /tmp/lightthpd/lib/* lib/
 	@rm /tmp/lightthpd -R
 
 devices: temporal skeleton
 	@echo Creating basic devices: This section need SuperUsuer permission
-	@cd tmp/rootfs/dev; sudo mknod -m 600 mem c 1 1
-	@cd tmp/rootfs/dev; sudo mknod -m 666 null c 1 3
-	@cd tmp/rootfs/dev; sudo mknod -m 666 zero c 1 5
-	@cd tmp/rootfs/dev; sudo mknod -m 644 random c 1 8
-	@cd tmp/rootfs/dev; sudo mknod -m 600 tty0 c 4 0
-	@cd tmp/rootfs/dev; sudo mknod -m 600 tty1 c 4 1
-	@cd tmp/rootfs/dev; sudo mknod -m 600 ttyS0 c 4 64
-	@cd tmp/rootfs/dev; sudo mknod -m 666 tty c 5 0
-	@cd tmp/rootfs/dev; sudo mknod -m 600 console c 5 1
+	@cd $(ROOTFS)/dev; sudo mknod -m 600 mem c 1 1
+	@cd $(ROOTFS)/dev; sudo mknod -m 666 null c 1 3
+	@cd $(ROOTFS)/dev; sudo mknod -m 666 zero c 1 5
+	@cd $(ROOTFS)/dev; sudo mknod -m 644 random c 1 8
+	@cd $(ROOTFS)/dev; sudo mknod -m 600 tty0 c 4 0
+	@cd $(ROOTFS)/dev; sudo mknod -m 600 tty1 c 4 1
+	@cd $(ROOTFS)/dev; sudo mknod -m 600 ttyS0 c 4 64
+	@cd $(ROOTFS)/dev; sudo mknod -m 666 tty c 5 0
+	@cd $(ROOTFS)/dev; sudo mknod -m 600 console c 5 1
 
 tarfile: temporal skeleton buildkernel
 	@echo Tar the directories created and remove the garbage
-	@sudo rm tmp/package -R
+	@sudo rm $(PACKAGE) -R
 	@echo Tar the directories
-	@tar cfz distribution.tar tmp
+	@tar cfz $(DISNAME).tar tmp
 	@echo Removing the garbage
-	@sudo rm tmp -R
+	@sudo rm -R $(MYTMP)
 
 help:
-	@echo make clean => Remove all creted files
+	@echo make clean = Remove all creted files
 
 clean:
 	@echo Cleaning the mess
-	@rm -R tmp
+	@rm -R $(MYTMP)
 
 
