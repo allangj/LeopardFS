@@ -117,8 +117,8 @@ crosslighttpd: temporal skeleton
 	@echo Unpack lighttpd-1.4.28
 	@cd $(PACKAGE); tar xvfz lighttpd-1.4.28.tar.gz
 #./configure --program-prefix= --bindir=/usr/bin --localstatedir=/var --includedir=/usr/include --infodir=/usr/share/info --exec-prefix=/usr --sysconfdir=/etc --prefix=/usr --datadir=/usr/share --libexecdir=/usr/libexec --sharedstatedir=/usr/com --libdir=/usr/lib --localstatedir=/var --with-openssl --mandir=/usr/share/man --sbindir=/usr/sbin
-	@cd $(PACKAGE)/lighttpd-1.4.28 ;./configure --host=arm-none-linux-gnueabi --disable-static --enable-shared --without-zlib --without-bzip2 --without-pcre --prefix=/tmp/lightthpd
-	@cd $(PACKAGE)/lighttpd-1.4.28; make; make install
+	@cd $(PACKAGE)/lighttpd-1.4.28 ;./configure --host=arm-none-linux-gnueabi --disable-static --enable-shared --without-zlib --without-bzip2 --without-pcre
+	@cd $(PACKAGE)/lighttpd-1.4.28; make; make install prefix=/tmp/lightthpd
 	@cd $(ROOTFS); cp -a /tmp/lightthpd/sbin/* sbin/; cp -a /tmp/lightthpd/lib/* lib/
 	@rm /tmp/lightthpd -R
 
