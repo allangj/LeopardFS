@@ -17,11 +17,6 @@
 # You could see a copy of the GNU General Public License at
 # http://www.gnu.org/licenses/gpl-2.0.html
 
-#--------------------------------------------------------------
-# Just run 'make menuconfig', configure stuff, then run 'make'.
-# You shouldn't need to mess with anything beyond this point...
-#--------------------------------------------------------------
-
 .PHONY: all build buildkernel skeleton crossbusybox crosslighttpd devices tarfile help clean
 
 # This top-level Makefile can *not* be executed in parallel
@@ -42,9 +37,9 @@ PATH   			:= $(TOOLCHAINPATH)/bin:$(PATH)
 export PATH
 
 
-all: build
+all: build tarfile
 
-build: buildkernel crossbusybox crosslighttpd devices tarfile
+build: buildkernel crossbusybox crosslighttpd devices
 
 temporal:
 	@echo Creating temps rootfs and package 
@@ -116,9 +111,8 @@ crosslighttpd: temporal skeleton
 	@cd $(PACKAGE); wget http://download.lighttpd.net/lighttpd/releases-1.4.x/lighttpd-1.4.28.tar.gz
 	@echo Unpack lighttpd-1.4.28
 	@cd $(PACKAGE); tar xvfz lighttpd-1.4.28.tar.gz
-#./configure --program-prefix= --bindir=/usr/bin --localstatedir=/var --includedir=/usr/include --infodir=/usr/share/info --exec-prefix=/usr --sysconfdir=/etc --prefix=/usr --datadir=/usr/share --libexecdir=/usr/libexec --sharedstatedir=/usr/com --libdir=/usr/lib --localstatedir=/var --with-openssl --mandir=/usr/share/man --sbindir=/usr/sbin
 	@cd $(PACKAGE)/lighttpd-1.4.28 ;./configure --host=arm-none-linux-gnueabi --disable-static --enable-shared --without-zlib --without-bzip2 --without-pcre
-	@cd $(PACKAGE)/lighttpd-1.4.28; make; make install prefix=/tmp/lightthpd
+	@cd $(PACKAGE)/lighttpd-1.4.28; make; make install prefix=/tmp/lightthpd/
 	@cd $(ROOTFS); cp -a /tmp/lightthpd/sbin/* sbin/; cp -a /tmp/lightthpd/lib/* lib/
 	@rm /tmp/lightthpd -R
 
@@ -143,10 +137,16 @@ tarfile: temporal skeleton buildkernel
 	@sudo rm -R $(MYTMP)
 
 help:
+	@echo make build = Build all package and kernel but does not tar it into a file
+	@echo make buildkernel = Create the kernel image
+	@echo make skeleton = Create the skeleton of the FS
+	@echo make crossbusybox = Crosscompile busybox
+	@echo make crosslighttpd = Crosscompile lighttpd
 	@echo make clean = Remove all creted files
 
 clean:
 	@echo Cleaning the mess
-	@rm -R $(MYTMP)
+	@rm -R -f $(MYTMP)
+	@rm -R -f $(DISNAME)
 
 
