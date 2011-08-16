@@ -64,12 +64,12 @@ buildkernel: temporal
 skeleton: temporal
 	@echo Creating the basics for the FS
 	@echo Creating directories and permissions
-	@cd $(ROOTFS); mkdir bin dev etc lib proc sbin tmp usr var sys
+	@cd $(ROOTFS); mkdir -p bin dev etc lib proc sbin tmp usr var sys
 	@chmod 1777 $(ROOTFS)/tmp
-	@cd $(ROOTFS); mkdir usr/bin usr/lib usr/sbin
-	@cd $(ROOTFS); mkdir var/lib var/lock var/log var/run var/tmp
+	@cd $(ROOTFS); mkdir -p usr/bin usr/lib usr/sbin
+	@cd $(ROOTFS); mkdir  -p var/lib var/lock var/log var/run var/tmp
 	@chmod 1777 $(ROOTFS)/var/tmp
-	@cd $(ROOTFS); mkdir etc/init.d dev/pts
+	@cd $(ROOTFS); mkdir -p etc/init.d dev/pts
 	
 	@echo Copying the basic C dynamic libraries from toolchain
 	@cd $(ROOTFS)/lib; cp -a $(TOOLCHAINPATH)/arm-none-linux-gnueabi/libc/armv4t/lib/* ./
@@ -95,7 +95,7 @@ skeleton: temporal
 	@echo Copying mdev.conf
 	@cp $(FSSCRIPTS)/mdev.conf $(ROOTFS)/etc
 
-crossbusybox: temporal skeleton
+crossbusybox: skeleton
 	@echo Cross-compile busybox
 	@echo Downloading busybox-1.18.5
 	@cd $(PACKAGE); wget http://www.busybox.net/downloads/busybox-1.18.5.tar.bz2
@@ -104,7 +104,7 @@ crossbusybox: temporal skeleton
 	@cd $(PACKAGE)/busybox-1.18.5; make defconfig
 	@cd $(PACKAGE)/busybox-1.18.5; make install ARCH=arm CROSS_COMPILE=arm-none-linux-gnueabi- CONFIG_PREFIX=../../rootfs
 
-crosslighttpd: temporal skeleton
+crosslighttpd: skeleton 
 	@mkdir -p /tmp/lightthpd
 	@echo Cross-compile lighttpd
 	@echo Downloading lighttpd-1.4.28
@@ -112,10 +112,22 @@ crosslighttpd: temporal skeleton
 	@echo Unpack lighttpd-1.4.28
 	@cd $(PACKAGE); tar xvfz lighttpd-1.4.28.tar.gz
 	@cd $(PACKAGE)/lighttpd-1.4.28 ;./configure --host=arm-none-linux-gnueabi --disable-static --enable-shared --without-zlib --without-bzip2 --without-pcre
-	@cd $(PACKAGE)/lighttpd-1.4.28; make; make install prefix=/tmp/lightthpd/
+	@cd $(PACKAGE)/lighttpd-1.4.28 ; make; make install prefix=/tmp/lightthpd/
 	@cd $(ROOTFS); cp -a /tmp/lightthpd/sbin/* sbin/; cp -a /tmp/lightthpd/lib/* lib/
-	@rm /tmp/lightthpd -R
+	@rm /tmp/lightthpd -R -f
+	@rm /tmp/pcre -R -f
 
+crosspcre: skeleton
+	@mkdir -p /tmp/pcre
+	@echo Cross-compile pcre
+	@echo Downloading pcre-8.12
+	@cd $(PACKAGE); wget http://ftp.exim.llorien.org/pcre/pcre-8.12.tar.gz
+	@echo Unpack pcre-8.12
+	@cd $(PACKAGE); tar xvfz pcre-8.12.tar.gz
+	@cd $(PACKAGE)/pcre-8.12 ;./configure --host=arm-none-linux-gnueabi --prefix=/tmp/pcre
+	@cd $(PACKAGE)/pcre-8.12; make; make install
+	@cd $(ROOTFS); cp -a /tmp/pcre/bin/* bin/; cp -a /tmp/pcre/lib/* lib/
+	
 devices: temporal skeleton
 	@echo Creating basic devices: This section need SuperUsuer permission
 	@cd $(ROOTFS)/dev; sudo mknod -m 600 mem c 1 1

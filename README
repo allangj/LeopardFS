@@ -2,4 +2,6 @@ The makefile assumes the directory /opt/arm-2009q1 exists and contains the toolc
 
 The make file assumes the kernel is in the same directory as the makefile
 
-It is assumed that quilt is installed, if not if is required you do it
+It is assumed that the following package are installed, if not if is required you do it:
+	quilt
+	mkimage
