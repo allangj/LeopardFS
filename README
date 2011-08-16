@@ -5,3 +5,4 @@ The make file assumes the kernel is in the same directory as the makefile
 It is assumed that the following package are installed, if not if is required you do it:
 	quilt
 	mkimage
+        git

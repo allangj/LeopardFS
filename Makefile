@@ -17,7 +17,7 @@
 # You could see a copy of the GNU General Public License at
 # http://www.gnu.org/licenses/gpl-2.0.html
 
-.PHONY: all build buildkernel skeleton crossbusybox crosslighttpd devices tarfile help clean
+.PHONY: all build buildkernel skeleton crossbusybox crosslighttpd crossip devices tarfile help clean
 
 # This top-level Makefile can *not* be executed in parallel
 .NOTPARALLEL:
@@ -114,9 +114,21 @@ crosslighttpd: skeleton
 	@cd $(PACKAGE)/lighttpd-1.4.28;./configure --host=arm-none-linux-gnueabi --disable-static --enable-shared --without-zlib --without-bzip2 --without-pcre
 	@cd $(PACKAGE)/lighttpd-1.4.28; make; make install prefix=/tmp/lightthpd/
 	@cd $(ROOTFS); cp -a /tmp/lightthpd/sbin/* sbin/; cp -a /tmp/lightthpd/lib/* lib/
-	@rm /tmp/lightthpd -R -f
-	@rm /tmp/pcre -R -f	
+	@rm /tmp/lightthpd -R -f	
 	
+crossip: skeleton
+	@echo Cross-compile the IP program
+	@echo Clone the repo of the IP program
+	@cd $(PACKAGE); git clone git://github.com/gato22cr/Tareas.git
+	@echo Configure Prog1
+	@cd $(PACKAGE)/Tareas/Prog1/;./configure --host=arm-none-linux-gnueabi
+	@echo Compile and Install Prog1
+	@cd $(PACKAGE)/Tareas/Prog1/; make all; cp -a programa1 ../../rootfs/bin/
+	@echo Configure Prog2
+	@cd $(PACKAGE)/Tareas/Prog2/;./configure --host=arm-none-linux-gnueabi
+	@echo Compile and Install Prog1
+	@cd $(PACKAGE)/Tareas/Prog2/; make all; cp -a programa2 ../../rootfs/bin/
+
 devices: skeleton
 	@echo Creating basic devices: This section need SuperUsuer permission
 	@cd $(ROOTFS)/dev; sudo mknod -m 600 mem c 1 1
