@@ -104,29 +104,37 @@ crossbusybox: skeleton
 	@cd $(PACKAGE)/busybox-1.18.5; make defconfig
 	@cd $(PACKAGE)/busybox-1.18.5; make install ARCH=arm CROSS_COMPILE=arm-none-linux-gnueabi- CONFIG_PREFIX=../../rootfs
 
-crosslighttpd: skeleton 
+crosslighttpd: skeleton
 	@mkdir -p /tmp/lightthpd
 	@echo Cross-compile lighttpd
 	@echo Downloading lighttpd-1.4.28
 	@cd $(PACKAGE); wget http://download.lighttpd.net/lighttpd/releases-1.4.x/lighttpd-1.4.28.tar.gz
 	@echo Unpack lighttpd-1.4.28
 	@cd $(PACKAGE); tar xvfz lighttpd-1.4.28.tar.gz
-	@cd $(PACKAGE)/lighttpd-1.4.28 ;./configure --host=arm-none-linux-gnueabi --disable-static --enable-shared --without-zlib --without-bzip2 --without-pcre
-	@cd $(PACKAGE)/lighttpd-1.4.28 ; make; make install prefix=/tmp/lightthpd/
+	@cd $(PACKAGE)/lighttpd-1.4.28;./configure --host=arm-none-linux-gnueabi --disable-static --enable-shared --without-zlib --without-bzip2 --without-pcre
+	@cd $(PACKAGE)/lighttpd-1.4.28; make; make install prefix=/tmp/lightthpd/
 	@cd $(ROOTFS); cp -a /tmp/lightthpd/sbin/* sbin/; cp -a /tmp/lightthpd/lib/* lib/
 	@rm /tmp/lightthpd -R -f
 	@rm /tmp/pcre -R -f
 
+crosszlib: skeleton
+	@echo Cross-compile zlib
+	@echo Downloading zlib-1.1.4
+	@cd $(PACKAGE); wget http://www.gzip.org/zlib/zlib-1.1.4.tar.gz
+	@echo Unpack zlib-1.1.4
+	@cd $(PACKAGE); tar xvfz zlib-1.1.4.tar.gz
+	@cd $(PACKAGE)/zlib-1.1.4; CC=arm-none-linux-gnueabi-gcc --prefix=$(TOOLCHAINPATH)
+	@cd $(PACKAGE)/zlib-1.1.4; sudo make; sudo make install
+
 crosspcre: skeleton
-	@mkdir -p /tmp/pcre
 	@echo Cross-compile pcre
 	@echo Downloading pcre-8.12
 	@cd $(PACKAGE); wget http://ftp.exim.llorien.org/pcre/pcre-8.12.tar.gz
 	@echo Unpack pcre-8.12
 	@cd $(PACKAGE); tar xvfz pcre-8.12.tar.gz
-	@cd $(PACKAGE)/pcre-8.12 ;./configure --host=arm-none-linux-gnueabi --prefix=/tmp/pcre
-	@cd $(PACKAGE)/pcre-8.12; make; make install
-	@cd $(ROOTFS); cp -a /tmp/pcre/bin/* bin/; cp -a /tmp/pcre/lib/* lib/
+	@cd $(PACKAGE)/pcre-8.12;./configure --host=arm-none-linux-gnueabi --prefix=$(TOOLCHAINPATH)
+	@cd $(PACKAGE)/pcre-8.12; sudo make; sudo make install
+	
 	
 devices: temporal skeleton
 	@echo Creating basic devices: This section need SuperUsuer permission
