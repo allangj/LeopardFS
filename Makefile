@@ -1,8 +1,8 @@
 # Makefile for building a simple distribution
 #
 # Copyright (C) 2010 by Allan Granados  <allangj1_618@hotmail.com>
-#                       Sebastian Lopez <>
-#			Miguel Fonseca  <>
+#                       Sebastian Lopez <slopez84@gmail.com>
+#			Miguel Fonseca  <migue.fonseca@gmail.com>
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -115,28 +115,9 @@ crosslighttpd: skeleton
 	@cd $(PACKAGE)/lighttpd-1.4.28; make; make install prefix=/tmp/lightthpd/
 	@cd $(ROOTFS); cp -a /tmp/lightthpd/sbin/* sbin/; cp -a /tmp/lightthpd/lib/* lib/
 	@rm /tmp/lightthpd -R -f
-	@rm /tmp/pcre -R -f
-
-crosszlib: skeleton
-	@echo Cross-compile zlib
-	@echo Downloading zlib-1.1.4
-	@cd $(PACKAGE); wget http://www.gzip.org/zlib/zlib-1.1.4.tar.gz
-	@echo Unpack zlib-1.1.4
-	@cd $(PACKAGE); tar xvfz zlib-1.1.4.tar.gz
-	@cd $(PACKAGE)/zlib-1.1.4; CC=arm-none-linux-gnueabi-gcc --prefix=$(TOOLCHAINPATH)
-	@cd $(PACKAGE)/zlib-1.1.4; sudo make; sudo make install
-
-crosspcre: skeleton
-	@echo Cross-compile pcre
-	@echo Downloading pcre-8.12
-	@cd $(PACKAGE); wget http://ftp.exim.llorien.org/pcre/pcre-8.12.tar.gz
-	@echo Unpack pcre-8.12
-	@cd $(PACKAGE); tar xvfz pcre-8.12.tar.gz
-	@cd $(PACKAGE)/pcre-8.12;./configure --host=arm-none-linux-gnueabi --prefix=$(TOOLCHAINPATH)
-	@cd $(PACKAGE)/pcre-8.12; sudo make; sudo make install
+	@rm /tmp/pcre -R -f	
 	
-	
-devices: temporal skeleton
+devices: skeleton
 	@echo Creating basic devices: This section need SuperUsuer permission
 	@cd $(ROOTFS)/dev; sudo mknod -m 600 mem c 1 1
 	@cd $(ROOTFS)/dev; sudo mknod -m 666 null c 1 3
@@ -148,7 +129,7 @@ devices: temporal skeleton
 	@cd $(ROOTFS)/dev; sudo mknod -m 666 tty c 5 0
 	@cd $(ROOTFS)/dev; sudo mknod -m 600 console c 5 1
 
-tarfile: temporal skeleton buildkernel
+tarfile: skeleton buildkernel
 	@echo Tar the directories created and remove the garbage
 	@sudo rm $(PACKAGE) -R
 	@echo Tar the directories
