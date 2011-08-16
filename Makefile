@@ -17,7 +17,7 @@
 # You could see a copy of the GNU General Public License at
 # http://www.gnu.org/licenses/gpl-2.0.html
 
-.PHONY: all build buildkernel skeleton crossbusybox crosslighttpd crossip devices tarfile help clean
+.PHONY: all build buildkernel buildfs skeleton crossbusybox crosslighttpd crossip devices tarfile help clean
 
 # This top-level Makefile can *not* be executed in parallel
 .NOTPARALLEL:
@@ -39,7 +39,9 @@ export PATH
 
 all: build tarfile
 
-build: buildkernel crossbusybox crosslighttpd devices
+build: buildkernel buildfs
+
+buildfs: crossbusybox crosslighttpd crossip devices
 
 temporal:
 	@echo Creating temps rootfs and package 
@@ -152,9 +154,11 @@ tarfile: skeleton buildkernel
 help:
 	@echo make build = Build all package and kernel but does not tar it into a file
 	@echo make buildkernel = Create the kernel image
+	@echo make buildfs = Create the FS with the programs
 	@echo make skeleton = Create the skeleton of the FS
 	@echo make crossbusybox = Crosscompile busybox
 	@echo make crosslighttpd = Crosscompile lighttpd
+	@echo make crossip = Crosscompile the ip program
 	@echo make clean = Remove all creted files
 
 clean:
