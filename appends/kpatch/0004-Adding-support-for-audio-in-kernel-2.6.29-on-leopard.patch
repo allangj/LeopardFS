@@ -1,0 +1,150 @@
+From 64eda7cd570636d467e7d22eeca49950e0ae46c5 Mon Sep 17 00:00:00 2001
+From: Cristina Murillo Miranda <cristina.murillo@ridgerun.com>
+Date: Mon, 31 Aug 2009 09:42:09 -0600
+Subject: [PATCH 4/4] Adding support for audio in kernel 2.6.29 on leopard board
+
+
+Signed-off-by: Cristina Murillo Miranda <cristina.murillo@ridgerun.com>
+---
+ sound/soc/davinci/Kconfig       |   10 ++++++++
+ sound/soc/davinci/Makefile      |    1 +
+ sound/soc/davinci/davinci-evm.c |   49 ++++++++++++++++++++++++++++++++++++--
+ 3 files changed, 57 insertions(+), 3 deletions(-)
+
+Index: linux-2.6.29/sound/soc/davinci/Kconfig
+===================================================================
+--- linux-2.6.29.orig/sound/soc/davinci/Kconfig	2009-11-02 11:31:37.488423889 -0600
++++ linux-2.6.29/sound/soc/davinci/Kconfig	2009-11-02 11:31:39.676662401 -0600
+@@ -19,6 +19,16 @@
+ 	  Say Y if you want to add support for SoC audio on TI
+ 	  DaVinci DM6446 or DM355 EVM platforms.
+ 
++config SND_DM355_SOC_LEOPARD
++	tristate "SoC Audio support for DaVinci DM355 Leopard Board"
++	depends on SND_DAVINCI_SOC
++	depends on MACH_DM355_LEOPARD
++	select SND_DAVINCI_SOC_I2S
++	select SND_SOC_TLV320AIC3X
++	help
++	  Say Y if you want to add support for SoC audio on Leopard Board
++
++
+ config SND_DAVINCI_SOC_SFFSDR
+ 	tristate "SoC Audio support for SFFSDR"
+ 	depends on SND_DAVINCI_SOC && MACH_SFFSDR
+Index: linux-2.6.29/sound/soc/davinci/Makefile
+===================================================================
+--- linux-2.6.29.orig/sound/soc/davinci/Makefile	2009-11-02 11:31:37.500631587 -0600
++++ linux-2.6.29/sound/soc/davinci/Makefile	2009-11-02 11:31:39.676662401 -0600
+@@ -10,4 +10,5 @@
+ snd-soc-sffsdr-objs := davinci-sffsdr.o
+ 
+ obj-$(CONFIG_SND_DAVINCI_SOC_EVM) += snd-soc-evm.o
++obj-$(CONFIG_SND_DM355_SOC_LEOPARD) += snd-soc-evm.o
+ obj-$(CONFIG_SND_DAVINCI_SOC_SFFSDR) += snd-soc-sffsdr.o
+Index: linux-2.6.29/sound/soc/davinci/davinci-evm.c
+===================================================================
+--- linux-2.6.29.orig/sound/soc/davinci/davinci-evm.c	2009-11-02 11:31:37.492440880 -0600
++++ linux-2.6.29/sound/soc/davinci/davinci-evm.c	2009-11-02 11:38:39.454313351 -0600
+@@ -45,6 +45,8 @@
+ 	/* ASP1 on DM355 EVM is clocked by an external oscillator */
+ 	if (machine_is_davinci_dm355_evm())
+ 		sysclk = 27000000;
++	if (machine_is_dm355_leopard())
++		sysclk = 24000000;
+ 
+ 	/* ASP0 in DM6446 EVM is clocked by U55, as configured by
+ 	 * board-dm644x-evm.c using GPIOs from U18.  There are six
+@@ -152,12 +154,26 @@
+ 	.num_links = 1,
+ };
+ 
++/* leopard-board audio machine driver */
++static struct snd_soc_card snd_soc_card_leopard = {
++	.name = "Leopard Board",
++	.platform = &davinci_soc_platform,
++	.dai_link = &evm_dai,
++	.num_links = 1,
++};
++
+ /* evm audio private data */
+ static struct aic3x_setup_data evm_aic3x_setup = {
+ 	.i2c_bus = 1,
+ 	.i2c_address = 0x1b,
+ };
+ 
++/* leopard board audio private data */
++static struct aic3x_setup_data leopard_aic3x_setup = {
++	.i2c_bus = 1,
++	.i2c_address = 0x18,
++};
++
+ /* evm audio subsystem */
+ static struct snd_soc_device evm_snd_devdata = {
+ 	.card = &snd_soc_card_evm,
+@@ -165,6 +181,13 @@
+ 	.codec_data = &evm_aic3x_setup,
+ };
+ 
++/* leopard audio subsystem */
++static struct snd_soc_device leopard_snd_devdata = {
++	.card = &snd_soc_card_leopard,
++	.codec_dev = &soc_codec_dev_aic3x,
++	.codec_data = &leopard_aic3x_setup,
++};
++
+ /* DM6446 EVM uses ASP0; line-out is a pair of RCA jacks */
+ static struct resource evm_snd_resources[] = {
+ 	{
+@@ -188,11 +211,25 @@
+ 	},
+ };
+ 
++/* DM335 Leopard Board uses ASP1; line-out is a stereo mini-jack */
++static struct resource leopard_snd_resources[] = {
++	{
++		.start = DAVINCI_ASP1_BASE,
++		.end = DAVINCI_ASP1_BASE + SZ_8K - 1,
++		.flags = IORESOURCE_MEM,
++	},
++};
++
+ static struct evm_snd_platform_data dm335evm_snd_data = {
+ 	.tx_dma_ch	= DAVINCI_DMA_ASP1_TX,
+ 	.rx_dma_ch	= DAVINCI_DMA_ASP1_RX,
+ };
+ 
++static struct evm_snd_platform_data leopard_snd_data = {
++	.tx_dma_ch	= DAVINCI_DMA_ASP1_TX,
++	.rx_dma_ch	= DAVINCI_DMA_ASP1_RX,
++};
++
+ static struct platform_device *evm_snd_device;
+ 
+ static int __init evm_init(void)
+@@ -216,6 +253,14 @@
+ 		resources = dm335evm_snd_resources;
+ 		data = &dm335evm_snd_data;
+ 		index = 1;
++	} else if (machine_is_dm355_leopard()) {
++		/* we don't use ASP1 IRQs, or we'd need to mux them ... */
++		davinci_cfg_reg(DM355_EVT8_ASP1_TX);
++		davinci_cfg_reg(DM355_EVT9_ASP1_RX);
++
++		resources = leopard_snd_resources;
++		data = &leopard_snd_data;
++		index = 1;
+ 	} else
+ 		return -EINVAL;
+ 
+@@ -223,8 +268,8 @@
+ 	if (!evm_snd_device)
+ 		return -ENOMEM;
+ 
+-	platform_set_drvdata(evm_snd_device, &evm_snd_devdata);
+-	evm_snd_devdata.dev = &evm_snd_device->dev;
++	platform_set_drvdata(evm_snd_device, &leopard_snd_devdata);
++	leopard_snd_devdata.dev = &evm_snd_device->dev;
+ 	platform_device_add_data(evm_snd_device, data, sizeof(*data));
+ 
+ 	ret = platform_device_add_resources(evm_snd_device, resources, 1);

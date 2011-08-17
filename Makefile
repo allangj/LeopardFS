@@ -50,9 +50,9 @@ temporal:
 buildkernel: temporal
 	@echo Unpacking the kernel
 	@cd $(PACKAGE); tar xvfz ../../linux-2.6.29.tar.gz
-	@echo Adding the patch
-	@cp $(KPATCH)/crosscompilerpatch $(PACKAGE)/linux-2.6.29/patches/
-	@echo crosscompilerpatch >> $(PACKAGE)/linux-2.6.29/patches/series
+	@echo Adding the patches
+	@rm -R $(PACKAGE)/linux-2.6.29/patches
+	@cp -a $(KPATCH) $(PACKAGE)/linux-2.6.29/patches
 	@echo Applying patches
 	@cd $(PACKAGE)/linux-2.6.29; quilt pop -a -f; quilt push -a
 	@echo Building the kernel

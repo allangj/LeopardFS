@@ -1,0 +1,418 @@
+From a3e25703de17e8f1d3a333c29aec7e87642c7e88 Mon Sep 17 00:00:00 2001
+From: mrodriguez <mrodriguez@ridgerun.com>
+Date: Mon, 5 Oct 2009 16:31:16 -0600
+Subject: [PATCH] mt9v113 vga sensor support
+
+
+Signed-off-by: mrodriguez <mrodriguez@ridgerun.com>
+---
+ arch/arm/mach-davinci/board-dm355-leopard.c |   69 ++++++++++++++++++++++++++-
+ drivers/media/video/davinci/ccdc_dm355.c    |   15 ++++--
+ drivers/media/video/davinci/vpfe_capture.c  |   61 +++++++++++++++++++++---
+ drivers/media/video/mt9v113_davinci.c       |    5 +-
+ include/linux/videodev2.h                   |    4 ++
+ include/media/mt9v113_davinci.h             |   11 ++++-
+ 6 files changed, 149 insertions(+), 16 deletions(-)
+
+Index: linux-2.6.29/arch/arm/mach-davinci/board-dm355-leopard.c
+===================================================================
+--- linux-2.6.29.orig/arch/arm/mach-davinci/board-dm355-leopard.c	2009-11-20 11:10:53.117917209 -0600
++++ linux-2.6.29/arch/arm/mach-davinci/board-dm355-leopard.c	2009-11-20 14:25:51.274596377 -0600
+@@ -19,6 +19,9 @@
+ #include <linux/io.h>
+ #include <linux/gpio.h>
+ #include <linux/clk.h>
++#include <media/v4l2-int-device.h>
++#include <media/tvp514x.h>
++#include <media/mt9v113_davinci.h>
+ #include <linux/spi/spi.h>
+ #include <linux/spi/eeprom.h>
+ 
+@@ -133,10 +136,54 @@
+ 	leopard_mmc_gpio = gpio;
+ }
+ 
++/* for MT9V113 image sensor - BEGIN*/
++static struct v4l2_ifparm mt9v113_ifparm = {
++	.if_type = V4L2_IF_TYPE_PARALLEL,
++	.u = {
++	      .parallel = {
++			.frame_start_on_rising_vs = 1,
++			.swap = 0,
++			.latch_clk_inv = 0,
++			.no_hs_inv = 0,	/* active high */
++			.no_vs_inv = 0,	/* active high */
++			.clock_min = 6000000, /* 6Mhz */
++			.clock_max = 27000000, /*27Mhz*/
++			},
++	      },
++};
++
++/**
++ * @brief mt9v113_g_ifparm - Returns the mt9v113 decoder interface parameters
++ *
++ * @param p - pointer to v4l2_ifparm structure
++ * @return result of operation - 0 is success
++ */
++static int mt9v113_g_ifparm(struct v4l2_ifparm *p)
++{
++	if (p == NULL)
++		return -EINVAL;
++
++	*p = mt9v113_ifparm;
++	return 0;
++}
++
++static struct mt9v113_platform_data mt9v113_pdata = {
++	.master = CAPTURE_DRV_NAME,
++	.ifparm = mt9v113_g_ifparm,
++	.hs_polarity = 1,
++	.vs_polarity = 1
++};
++/* for MT9V113 image sensor - END*/
++
+ static struct i2c_board_info dm355leopard_i2c_info[] = {
+ 	{ I2C_BOARD_INFO("dm355leopard_msp", 0x25),
+ 		.platform_data = dm355leopard_mmcsd_gpios,
+-		/* plus irq */ },
++	},
++	{
++		I2C_BOARD_INFO("mt9v113", MT9V113_I2C_ADDR),
++		.platform_data = &mt9v113_pdata,
++	},	
++	/* { plus irq  }, */
+ };
+ 
+ static void __init leopard_init_i2c(void)
+@@ -175,6 +222,24 @@
+ 	.num_resources	= ARRAY_SIZE(dm355leopard_dm9000_rsrc),
+ };
+ 
++static struct vpfe_capture_input vpfe_capture_inputs = {
++	.num_inputs = VPFE_MAX_DEC_INPUTS,
++	.current_input = 0,
++	.inputs[0] = {
++		.dec_name = MT9V113_MODULE_NAME,
++		.input = {
++			.index = 0,
++			.name = "VGA Sensor",
++			.type = V4L2_INPUT_TYPE_CAMERA,
++			.std = V4L2_STD_VGA,
++		},
++		.route = {
++			.output = OUTPUT_8BIT_422_VGA,
++		},
++		.routing_supported = 1,
++	},
++};
++
+ static struct platform_device *davinci_leopard_devices[] __initdata = {
+ 	&dm355leopard_dm9000,
+ 	&davinci_nand_device,
+@@ -187,6 +252,8 @@
+ static void __init dm355_leopard_map_io(void)
+ {
+ 	davinci_map_common_io();
++	/* setup input configuration for VPFE input devices */
++	setup_vpfe_input_config(&vpfe_capture_inputs);
+ 	dm355_init();
+ }
+ 
+Index: linux-2.6.29/drivers/media/video/davinci/ccdc_dm355.c
+===================================================================
+--- linux-2.6.29.orig/drivers/media/video/davinci/ccdc_dm355.c	2009-11-20 11:10:53.125916551 -0600
++++ linux-2.6.29/drivers/media/video/davinci/ccdc_dm355.c	2009-11-20 11:10:53.197791348 -0600
+@@ -1551,7 +1551,7 @@
+ 	/*
+ 	 *      C O N F I G U R E   I N T E R R U P T   R E G I S T E R S
+ 	 */
+-	if (params->frm_fmt == CCDC_FRMFMT_PROGRESSIVE) {
++	/*if (params->frm_fmt == CCDC_FRMFMT_PROGRESSIVE) {
+ 		val = params->win.height / 2;
+ 		regw(136, VDINT0);
+ 		regw(149, VDINT0);
+@@ -1559,6 +1559,15 @@
+ 	} else {
+ 		regw(0, VDINT0);
+ 		regw(0, VDINT1);
++	}*/
++	
++	 if (params->frm_fmt == CCDC_FRMFMT_PROGRESSIVE) {
++	    val = params->win.height -1 ;
++	    regw(val, VDINT0);
++	    regw(val, VDINT1);
++	} else {
++	    regw(0, VDINT0);
++	    regw(0, VDINT1);
+ 	}
+ 
+ 	dev_dbg(dev, "\nend of ccdc_config_raw...");
+@@ -1721,9 +1730,7 @@
+ 
+ static int ccdc_set_hw_if_type(enum vpfe_hw_if_type iface)
+ {
+-	ccdc_if_type = VPFE_RAW_BAYER;
+-	// TODO: NOW it is for testing only
+-	/* ccdc_if_type = iface; */
++	ccdc_if_type = iface;
+ 	return 0;
+ }
+ 
+Index: linux-2.6.29/drivers/media/video/davinci/vpfe_capture.c
+===================================================================
+--- linux-2.6.29.orig/drivers/media/video/davinci/vpfe_capture.c	2009-11-20 11:10:53.141785053 -0600
++++ linux-2.6.29/drivers/media/video/davinci/vpfe_capture.c	2009-11-20 14:25:51.377781858 -0600
+@@ -25,13 +25,15 @@
+ #include <mach/cpu.h>
+ #include <media/davinci/vpfe_capture.h>
+ #include <media/tvp514x.h>
++#include <media/mt9v113_davinci.h>
++
+ static int debug;
+ 
+ //static char *ch0_decoder = "TVP514X";
+ static char *ch0_decoder = "mt9v113";
+ 
+ static u32 ch0_numbuffers = 3;
+-static u32 ch0_bufsize = (720 * 576 * 2);
++static u32 ch0_bufsize = (640 * 480 * 2);
+ module_param(ch0_decoder, charp, S_IRUGO);
+ module_param(ch0_numbuffers, uint, S_IRUGO);
+ module_param(ch0_bufsize, uint, S_IRUGO);
+@@ -40,8 +42,8 @@
+ static struct vpfe_config_params config_params = {
+ 	.min_numbuffers = 3,
+ 	.numbuffers[0] = 3,
+-	.min_bufsize[0] = 720 * 480 * 2,
+-	.channel_bufsize[0] = 720 * 576 * 2,
++	.min_bufsize[0] = 640 * 480 * 2,
++	.channel_bufsize[0] = 640 * 480 * 2,
+ };
+ 
+ static int vpfe_nr[] = { 0 };
+@@ -59,6 +61,7 @@
+ 
+ #define VPFE_PIXELASPECT_NTSC       {11, 10}
+ #define VPFE_PIXELASPECT_PAL        {54, 59}
++#define VPFE_PIXELASPECT_VGA	    {1, 1}
+ 
+ /* standard information */
+ struct vpfe_standard {
+@@ -70,7 +73,11 @@
+ 	char frame_format;
+ };
+ 
++/*Video4linux does not have #defines for DIGital video standards
++  an extra define was added for Leopard on /linux/videodev2.h*/
++
+ struct vpfe_standard vpfe_standards[] = {
++	{V4L2_STD_VGA, 640, 480,VPFE_PIXELASPECT_VGA, 0},
+ 	{V4L2_STD_NTSC,	720, 480, VPFE_PIXELASPECT_NTSC, 1},
+ 	{V4L2_STD_PAL,	720, 576, VPFE_PIXELASPECT_PAL, 1},
+ };
+@@ -85,21 +92,31 @@
+ 		.desc = "Raw Bayer GrRBGb 8bit A-Law compressed",
+ 		.hw_fmt = VPFE_BAYER_8BIT_PACK_ALAW,
+ 	},
++#ifndef CONFIG_MACH_DM355_LEOPARD
+ 	{
+ 		.pix_fmt = V4L2_PIX_FMT_SBGGR16,
+ 		.desc = "Raw Bayer GrRBGb - 16bit",
+ 		.hw_fmt = VPFE_BAYER,
+ 	},
++#endif
+ 	{
+ 		.pix_fmt = V4L2_PIX_FMT_SGRBG10DPCM8,
+ 		.desc = "Raw Bayer GrRBGb 8 bit DPCM compressed",
+ 		.hw_fmt = VPFE_BAYER_8BIT_PACK_DPCM,
+ 	},
++#ifdef CONFIG_MACH_DM355_LEOPARD
++	{
++		.pix_fmt = V4L2_PIX_FMT_UYVY,
++		.desc ="YCbCr 4:2:2 Interleaved UYVY-(HW-Bayer)",
++		.hw_fmt = VPFE_BAYER,
++	},
++#else
+ 	{
+ 		.pix_fmt = V4L2_PIX_FMT_UYVY,
+ 		.desc = "YCbCr 4:2:2 Interleaved UYVY",
+ 		.hw_fmt = VPFE_UYVY,
+ 	},
++#endif
+ 	{
+ 		.pix_fmt = V4L2_PIX_FMT_YUYV,
+ 		.desc = "YCbCr 4:2:2 Interleaved YUYV",
+@@ -274,6 +291,10 @@
+ 		break;
+ 	case OUTPUT_10BIT_422_SEPERATE_SYNC:
+ 		channel->vpfe_if = VPFE_YCBCR_SYNC_8;
++		break;
++	case OUTPUT_8BIT_422_VGA:
++		channel->vpfe_if = VPFE_RAW_BAYER;
++		break;
+ 	default:
+ 		v4l2_err(vpfe_dev->driver, "decoder output"
+ 			" not supported, %d\n",
+@@ -302,12 +323,17 @@
+ 	ccdc_hw_dev.get_buftype(&buf_type);
+ 	ccdc_hw_dev.get_pixelformat(&hw_pix);
+ 
++#ifndef CONFIG_MACH_DM355_LEOPARD
++	if (hw_pix == VPFE_BAYER)
++		f->fmt.pix.pixelformat = V4L2_PIX_FMT_UYVY;
++#else
+ 	if (hw_pix == VPFE_BAYER)
+ 		f->fmt.pix.pixelformat = V4L2_PIX_FMT_SBGGR16;
+-	else if (hw_pix == VPFE_BAYER_8BIT_PACK_ALAW)
+-		f->fmt.pix.pixelformat = V4L2_PIX_FMT_SBGGR8;
+ 	else if (hw_pix == VPFE_UYVY)
+ 		f->fmt.pix.pixelformat = V4L2_PIX_FMT_UYVY;
++#endif
++	else if (hw_pix == VPFE_BAYER_8BIT_PACK_ALAW)
++		f->fmt.pix.pixelformat = V4L2_PIX_FMT_SBGGR8;
+ 	else if (hw_pix == VPFE_YUYV)
+ 		f->fmt.pix.pixelformat = V4L2_PIX_FMT_YUYV;
+ 	else {
+@@ -352,7 +378,11 @@
+ 		/* set up all parameters in CCDC */
+ 		win.top = common->crop.top;
+ 		win.left = common->crop.left;
++#ifdef CONFIG_MACH_DM355_LEOPARD
++		win.width = common->fmt.fmt.pix.width*2;
++#else
+ 		win.width = common->fmt.fmt.pix.width;
++#endif
+ 		win.height = common->fmt.fmt.pix.height;
+ 		ccdc_hw_dev.set_image_window(&win);
+ 		if (common->fmt.fmt.pix.field ==
+@@ -1022,19 +1052,28 @@
+ 	 * image window
+ 	 */
+ 	ccdc_hw_dev.get_image_window(&win);
++#ifdef CONFIG_MACH_DM355_LEOPARD
++	win.width = common->fmt.fmt.pix.width*2;
++#else
+ 	win.width = common->fmt.fmt.pix.width;
++#endif
+ 	win.height = common->fmt.fmt.pix.height;
+ 	ccdc_hw_dev.set_image_window(&win);
+ 
+ 	/* In this case, image window and crop window are
+ 	 * the same
+ 	 */
++#ifdef CONFIG_MACH_DM355_LEOPARD
++	if (common->fmt.fmt.pix.pixelformat == V4L2_PIX_FMT_UYVY)
++		ccdc_hw_dev.set_pixelformat(VPFE_BAYER);
++#else
+ 	if (common->fmt.fmt.pix.pixelformat == V4L2_PIX_FMT_SBGGR16)
+ 		ccdc_hw_dev.set_pixelformat(VPFE_BAYER);
+-	else if (common->fmt.fmt.pix.pixelformat == V4L2_PIX_FMT_SBGGR8)
+-		ccdc_hw_dev.set_pixelformat(VPFE_BAYER_8BIT_PACK_ALAW);
+ 	else if (common->fmt.fmt.pix.pixelformat == V4L2_PIX_FMT_UYVY)
+ 		ccdc_hw_dev.set_pixelformat(VPFE_UYVY);
++#endif
++	else if (common->fmt.fmt.pix.pixelformat == V4L2_PIX_FMT_SBGGR8)
++		ccdc_hw_dev.set_pixelformat(VPFE_BAYER_8BIT_PACK_ALAW);
+ 	else if (common->fmt.fmt.pix.pixelformat == V4L2_PIX_FMT_YUYV)
+ 		ccdc_hw_dev.set_pixelformat(VPFE_YUYV);
+ 	else {
+@@ -1092,7 +1131,11 @@
+ 			vid_ch->std_info.activelines;
+ 	win.top = common->crop.top;
+ 	win.left = common->crop.left;
++#ifdef CONFIG_MACH_DM355_LEOPARD
++	win.width = common->fmt.fmt.pix.width*2;
++#else
+ 	win.width = common->fmt.fmt.pix.width;
++#endif
+ 	win.height = common->fmt.fmt.pix.height;
+ 	ccdc_hw_dev.set_image_window(&win);
+ 	if (vid_ch->std_info.frame_format) {
+@@ -1816,7 +1859,11 @@
+ 	if ((crop->c.left + crop->c.width <= vid_ch->std_info.activepixels) &&
+ 	    (crop->c.top + crop->c.height <= vid_ch->std_info.activelines)) {
+ 		/* adjust the width to 16 pixel boundry */
++#ifdef CONFIG_MACH_DM355_LEOPARD
++		crop->c.width = ((crop->c.width*2 + 15) & ~0xf);
++#else
+ 		crop->c.width = ((crop->c.width + 15) & ~0xf);
++#endif
+ 		ccdc_hw_dev.set_image_window(&crop->c);
+ 		common->fmt.fmt.pix.width = crop->c.width;
+ 		common->fmt.fmt.pix.height = crop->c.height;
+Index: linux-2.6.29/drivers/media/video/mt9v113_davinci.c
+===================================================================
+--- linux-2.6.29.orig/drivers/media/video/mt9v113_davinci.c	2009-11-20 11:10:53.157783459 -0600
++++ linux-2.6.29/drivers/media/video/mt9v113_davinci.c	2009-11-20 13:31:57.073781398 -0600
+@@ -160,7 +160,7 @@
+ 	{TOK_WRITE, 0x0016, 0x42DF},
+ 	{TOK_WRITE, 0x0014, 0x2145},
+ 	{TOK_WRITE, 0x0014, 0x2145},
+-	{TOK_WRITE, 0x0010, 0x0431},
++	{TOK_WRITE, 0x0010, 0x0337},
+ 	{TOK_WRITE, 0x0012, 0x0000},
+ 	{TOK_WRITE, 0x0014, 0x244B},
+ 	{TOK_WRITE, 0x0014, 0x304B},
+@@ -342,7 +342,7 @@
+ 	 .video_std = MT9V113_IMAGE_STD_VGA,
+ 	 .standard = {
+ 		      .index = 0,
+-		      .id = MT9V113_IMAGE_STD_VGA,
++		      .id = V4L2_STD_VGA,
+ 		      .name = "VGA",
+ 		      .frameperiod = {1001, 30000},
+ 		      .framelines = 480
+@@ -361,7 +361,8 @@
+ 		      .framelines = 320
+ 		     },
+ 	},
+-	/* Standard: need to add for additional standard */
++	/* Standard: need to add for additional standard,configuration
++	   fixed to VGA*/
+ };
+ /*
+  * Control structure for Auto Gain
+Index: linux-2.6.29/include/linux/videodev2.h
+===================================================================
+--- linux-2.6.29.orig/include/linux/videodev2.h	2009-11-20 11:06:59.229847944 -0600
++++ linux-2.6.29/include/linux/videodev2.h	2009-11-20 11:10:53.201916454 -0600
+@@ -649,6 +649,10 @@
+ #define V4L2_STD_ATSC_8_VSB     ((v4l2_std_id)0x01000000)
+ #define V4L2_STD_ATSC_16_VSB    ((v4l2_std_id)0x02000000)
+ 
++/*V4L2 doesn't define digital video standards,
++an extra define is added*/
++#define V4L2_STD_VGA		((v4l2_std_id)0x10000000)
++
+ /* FIXME:
+    Although std_id is 64 bits, there is an issue on PPC32 architecture that
+    makes switch(__u64) to break. So, there's a hack on v4l2-common.c rounding
+Index: linux-2.6.29/include/media/mt9v113_davinci.h
+===================================================================
+--- linux-2.6.29.orig/include/media/mt9v113_davinci.h	2009-11-20 11:10:53.165781685 -0600
++++ linux-2.6.29/include/media/mt9v113_davinci.h	2009-11-20 11:10:53.201916454 -0600
+@@ -35,9 +35,9 @@
+ #define MT9V113_MODULE_NAME		"mt9v113"
+ 
+ /* Number of pixels and number of lines per frame for different standards */
+-#define VGA_NUM_ACTIVE_PIXELS		(640*2)
++#define VGA_NUM_ACTIVE_PIXELS		(640)
+ #define VGA_NUM_ACTIVE_LINES		(480)
+-#define QVGA_NUM_ACTIVE_PIXELS	(320*2)
++#define QVGA_NUM_ACTIVE_PIXELS	(320)
+ #define QVGA_NUM_ACTIVE_LINES		(240)
+ 
+ /**
+@@ -76,5 +76,12 @@
+ #define MT9V113_VGA_30FPS  (1130)
+ #define MT9V113_QVGA_30FPS  (1131)
+ 
++/*Defining an output to recognize mt9v113 hardware, 
++instead of tvp514x outputs*/
++
++enum mt9v113_output {
++	OUTPUT_8BIT_422_VGA = 5,
++};
++
+ #endif				/* ifndef _MT9V113_H */
+ 

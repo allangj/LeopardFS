@@ -1,0 +1,29 @@
+Index: linux-2.6.29/net/core/dev.c
+===================================================================
+--- linux-2.6.29.orig/net/core/dev.c	2010-02-22 10:54:34.941790938 -0600
++++ linux-2.6.29/net/core/dev.c	2010-02-22 11:01:22.058665872 -0600
+@@ -2588,19 +2588,16 @@
+ 		local_irq_disable();
+ 		skb = __skb_dequeue(&queue->input_pkt_queue);
+ 		if (!skb) {
+-			local_irq_enable();
+-			napi_complete(napi);
+-			goto out;
++			__napi_complete(napi);
++      			local_irq_enable();
++        		break;
+ 		}
+ 		local_irq_enable();
+ 
+-		napi_gro_receive(napi, skb);
++		netif_receive_skb(skb);
+ 	} while (++work < quota && jiffies == start_time);
+ 
+-	napi_gro_flush(napi);
+-
+-out:
+-	return work;
++		return work;
+ }
+ 
+ /**
