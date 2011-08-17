@@ -125,11 +125,11 @@ crossip: skeleton
 	@echo Configure Prog1
 	@cd $(PACKAGE)/Tareas/Prog1/;./configure --host=arm-none-linux-gnueabi
 	@echo Compile and Install Prog1
-	@cd $(PACKAGE)/Tareas/Prog1/; make all; cp -a programa1 ../../rootfs/bin/
+	@cd $(PACKAGE)/Tareas/Prog1/; make all; cp -a programa1 ../../../rootfs/bin/
 	@echo Configure Prog2
 	@cd $(PACKAGE)/Tareas/Prog2/;./configure --host=arm-none-linux-gnueabi
 	@echo Compile and Install Prog1
-	@cd $(PACKAGE)/Tareas/Prog2/; make all; cp -a programa2 ../../rootfs/bin/
+	@cd $(PACKAGE)/Tareas/Prog2/; make all; cp -a programa2 ../../../rootfs/bin/
 
 devices: skeleton
 	@echo Creating basic devices: This section need SuperUsuer permission
